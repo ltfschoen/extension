@@ -88,7 +88,7 @@ function Request ({ authId, className, isFirst, request: { origin }, url }: Prop
 export default styled(Request)`
   .acceptButton {
     width: 90%;
-    margin: .5rem auto 0;
+    margin: 0rem auto 0;
   }
 
   .rejectionButton {
@@ -97,7 +97,7 @@ export default styled(Request)`
 
     .closeLink {
       margin: auto;
-      padding: 0;
+      padding: 0 0 15px 0;
     }
   }
 `;
