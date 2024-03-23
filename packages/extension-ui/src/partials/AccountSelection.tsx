@@ -19,7 +19,7 @@ interface Props extends ThemeProps {
   withWarning?: boolean;
 }
 
-function AccounSelection ({ className, origin, showHidden = false, url, withWarning = true }: Props): React.ReactElement<Props> {
+function AccountSelection ({ className, origin, showHidden = false, url, withWarning = true }: Props): React.ReactElement<Props> {
   const { t } = useTranslation();
   const { accounts, hierarchy, selectedAccounts = [], setSelectedAccounts } = useContext(AccountContext);
   const [isIndeterminate, setIsIndeterminate] = useState(false);
@@ -92,7 +92,7 @@ function AccounSelection ({ className, origin, showHidden = false, url, withWarn
   );
 }
 
-export default styled(AccounSelection)(({ theme }: Props) => `
+export default styled(AccountSelection)(({ theme }: Props) => `
   .accountList {
     overflow-y: auto;
     height: 270px;

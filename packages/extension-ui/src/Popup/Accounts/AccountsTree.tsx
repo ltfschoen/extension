@@ -22,7 +22,7 @@ function AccountsTree ({ className, parentName, showHidden = true, suri, withChe
       { (showHidden || !account.isHidden) && (
         <Account
           {...account}
-          className={withCheckbox ? 'accountWichCheckbox' : ''}
+          className={withCheckbox ? 'accountWithCheckbox' : ''}
           parentName={parentName}
           showVisibilityAction={showHidden}
           suri={suri}
@@ -45,7 +45,7 @@ function AccountsTree ({ className, parentName, showHidden = true, suri, withChe
 }
 
 export default styled(AccountsTree)`
-  .accountWichCheckbox {
+  .accountWithCheckbox {
     display: flex;
     align-items: center;
 
