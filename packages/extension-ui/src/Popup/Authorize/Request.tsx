@@ -3,7 +3,7 @@
 
 import type { RequestAuthorizeTab } from '@polkadot/extension-base/background/types';
 
-import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 
 import { AccountContext, ActionContext } from '../../components/index.js';
 import { useTranslation } from '../../hooks/index.js';
@@ -24,8 +24,6 @@ function Request ({ authId, className, request: { origin }, url }: Props): React
   const { t } = useTranslation();
   const onAction = useContext(ActionContext);
   const [dontAskAgain, setDontAskAgain] = useState(false);
-  const approveButtonRef = useRef<HTMLButtonElement>(null);
-  const rejectButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const defaultAccountSelection = accounts
@@ -35,49 +33,66 @@ function Request ({ authId, className, request: { origin }, url }: Props): React
     setSelectedAccounts && setSelectedAccounts(defaultAccountSelection);
   }, [accounts, setSelectedAccounts]);
 
-  // Direct DOM event handlers to provide support for Brave
-  useEffect(() => {
-    const handleApprove = () => {
+  const _onApprove = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>): void => {
+      e.preventDefault();
+      e.stopPropagation();
+
       if (selectedAccounts.length === 0) {
         return;
       }
 
-      approveAuthRequest(authId, selectedAccounts)
+      // Process accounts in smaller chunks in order to avoid exceeding quota
+      // and the error `Resource::kQuotaBytes quota exceeded error`.
+      // Always send the full list of approved accounts processed so far to ensure
+      // extension maintains a complete record of all approved accounts.
+      const processAccountsInChunks = async (allAccounts: string[], chunkSize = 10) => {
+        // If the account list is small enough, process it directly
+        if (allAccounts.length <= chunkSize) {
+          await approveAuthRequest(authId, allAccounts);
+          return;
+        }
+
+        // Process in chunks for larger lists but always send cumulative list
+        // to ensure we don't lose any accounts from previous chunks
+        const approvedSoFar: string[] = [];
+
+        for (let i = 0; i < allAccounts.length; i += chunkSize) {
+          const currentChunk = allAccounts.slice(i, i + chunkSize);
+
+          // Add current chunk to running list of approved accounts
+          approvedSoFar.push(...currentChunk);
+
+          if (i > 0) {
+            // Add small delay between chunks to avoid overwhelming message system
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+
+          // Send complete list of accounts approved so far
+          await approveAuthRequest(authId, approvedSoFar);
+        }
+      };
+
+      processAccountsInChunks(selectedAccounts)
         .then(() => onAction())
         .catch((error: Error) => console.error(error));
-    };
+    },
+    [authId, onAction, selectedAccounts]
+  );
 
-    const handleReject = () => {
+  const _onReject = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>): void => {
+      e.preventDefault();
+      e.stopPropagation();
+
       const rejectFunction = dontAskAgain ? rejectAuthRequest : cancelAuthRequest;
 
       rejectFunction(authId)
         .then(() => onAction())
         .catch((error: Error) => console.error(error));
-    };
-
-    // Add direct event listeners to the button elements
-    const approveBtn = approveButtonRef.current;
-    const rejectBtn = rejectButtonRef.current;
-
-    if (approveBtn) {
-      approveBtn.addEventListener('click', handleApprove);
-    }
-
-    if (rejectBtn) {
-      rejectBtn.addEventListener('click', handleReject);
-    }
-
-    // Clean up event listeners
-    return () => {
-      if (approveBtn) {
-        approveBtn.removeEventListener('click', handleApprove);
-      }
-
-      if (rejectBtn) {
-        rejectBtn.removeEventListener('click', handleReject);
-      }
-    };
-  }, [authId, onAction, selectedAccounts, dontAskAgain]);
+    },
+    [authId, dontAskAgain, onAction]
+  );
 
   const _onToggleDontAskAgain = useCallback(
     (): void => {
@@ -101,7 +116,7 @@ function Request ({ authId, className, request: { origin }, url }: Props): React
           <button
             className='acceptButton'
             disabled={selectedAccounts.length === 0}
-            ref={approveButtonRef}
+            onClick={_onApprove}
           >
             {t('Connect {{total}} account(s)', { replace: {
               total: selectedAccounts.length
@@ -109,7 +124,7 @@ function Request ({ authId, className, request: { origin }, url }: Props): React
           </button>
           <button
             className='rejectButton'
-            ref={rejectButtonRef}
+            onClick={_onReject}
           >
             {t('Reject')}
           </button>
